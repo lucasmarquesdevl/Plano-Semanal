@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Planejador semanal de estudos com organização visual de sessões de estudo por matérias e horários." />
+  <meta name="description" content="StudyWeek — Dashboard e agenda semanal integrados para planejamento de estudos." />
   <meta name="theme-color" content="#0d0d0f" />
-  <title>StudyWeek — Plano Semanal</title>
+  <title>StudyWeek — Dashboard + Agenda</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -14,158 +14,184 @@
 </head>
 <body>
 
-  <!-- HEADER -->
+  <!-- HEADER (TOPO FIXO) -->
   <header class="header">
     <div class="header-left">
       <span class="logo-icon">◈</span>
-      <h1 class="logo-title">Plano Semanal</h1>
+      <h1 class="logo-title">StudyWeek</h1>
     </div>
     <div class="header-center">
-      <span class="week-label">Semana atual</span>
-      <span class="week-range" id="weekRange">—</span>
+      <div class="week-nav">
+        <button class="btn-week-nav" id="btnPrevWeek" aria-label="Semana anterior">←</button>
+        <div class="week-info">
+          <span class="week-label">Semana</span>
+          <span class="week-range" id="weekRange">—</span>
+        </div>
+        <button class="btn-week-nav" id="btnNextWeek" aria-label="Próxima semana">→</button>
+      </div>
     </div>
     <div class="header-right">
-      <div class="progress-ring-wrap" role="status" aria-label="Progresso semanal">
-        <svg class="progress-ring" width="48" height="48" aria-hidden="true">
-          <circle class="ring-bg" cx="24" cy="24" r="20"/>
-          <circle class="ring-fill" id="ringFill" cx="24" cy="24" r="20"/>
-        </svg>
-        <span class="progress-pct" id="progressPct" aria-live="polite">0%</span>
-      </div>
-      <button class="btn-clear" id="btnClear" title="Limpar semana" aria-label="Limpar todas as sessões da semana">↺</button>
+      <button class="btn-primary" id="btnNewSession">+ Nova Sessão</button>
+      <button class="btn-export" id="btnExport" aria-label="Exportar ou imprimir">⤓</button>
     </div>
   </header>
 
-  <!-- STATS BAR -->
-  <div class="stats-bar">
-    <div class="stat-card">
-      <span class="stat-num" id="statTotal">0</span>
-      <span class="stat-label">sessões planejadas</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-num" id="statDone">0</span>
-      <span class="stat-label">concluídas</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-num" id="statHours">0h</span>
-      <span class="stat-label">total de horas</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-num" id="statSubjects">0</span>
-      <span class="stat-label">matérias</span>
-    </div>
-  </div>
-
-  <!-- MAIN LAYOUT -->
-  <main class="main">
-
-    <!-- SIDEBAR: adicionar sessão -->
-    <aside class="sidebar">
-      <h2 class="sidebar-title">Nova Sessão</h2>
-
-      <form id="sessionForm">
-      <div class="form-group">
-        <label for="inputSubject">Matéria / Tema</label>
-        <input type="text" id="inputSubject" placeholder="ex: Cálculo, Inglês…" maxlength="40" required />
-      </div>
-
-      <fieldset class="form-group">
-        <legend>Dia da semana</legend>
-        <div class="day-picker" id="dayPicker" role="group">
-          <button type="button" class="day-btn" data-day="0" aria-label="Segunda-feira">SEG</button>
-          <button type="button" class="day-btn" data-day="1" aria-label="Terça-feira">TER</button>
-          <button type="button" class="day-btn" data-day="2" aria-label="Quarta-feira">QUA</button>
-          <button type="button" class="day-btn" data-day="3" aria-label="Quinta-feira">QUI</button>
-          <button type="button" class="day-btn" data-day="4" aria-label="Sexta-feira">SEX</button>
-          <button type="button" class="day-btn" data-day="5" aria-label="Sábado">SÁB</button>
-          <button type="button" class="day-btn" data-day="6" aria-label="Domingo">DOM</button>
+  <!-- MAIN LAYOUT: 2 COLUNAS (desktop) / STACK (mobile) -->
+  <main class="main-layout">
+    
+    <!-- COLUNA ESQUERDA: DASHBOARD -->
+    <aside class="dashboard" id="dashboard">
+      <h2 class="section-title">Dashboard</h2>
+      
+      <!-- CARD: Progresso -->
+      <div class="dashboard-card progress-card">
+        <h3 class="card-title">Progresso</h3>
+        <div class="progress-visual">
+          <div class="progress-ring-wrap" role="status" aria-label="Progresso semanal">
+            <svg class="progress-ring" width="120" height="120" aria-hidden="true">
+              <circle class="ring-bg" cx="60" cy="60" r="52"/>
+              <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="52"/>
+            </svg>
+            <span class="progress-pct" id="progressPct" aria-live="polite">0%</span>
+          </div>
         </div>
-      </fieldset>
-
-      <div class="form-row">
-        <div class="form-group half">
-          <label for="inputStart">Início</label>
-          <input type="time" id="inputStart" value="08:00" required />
-        </div>
-        <div class="form-group half">
-          <label for="inputEnd">Fim</label>
-          <input type="time" id="inputEnd" value="09:00" required />
+        <div class="progress-text">
+          <div class="progress-label"><span id="statDone">0</span> concluídas de <span id="statTotal">0</span> planejadas</div>
         </div>
       </div>
 
-      <fieldset class="form-group">
-        <legend>Cor da matéria</legend>
-        <div class="color-picker" id="colorPicker" role="group">
-          <button type="button" class="color-btn selected" data-color="#FF6B6B" style="background:#FF6B6B" aria-label="Cor vermelha"></button>
-          <button type="button" class="color-btn" data-color="#FFD93D" style="background:#FFD93D" aria-label="Cor amarela"></button>
-          <button type="button" class="color-btn" data-color="#6BCB77" style="background:#6BCB77" aria-label="Cor verde"></button>
-          <button type="button" class="color-btn" data-color="#4D96FF" style="background:#4D96FF" aria-label="Cor azul"></button>
-          <button type="button" class="color-btn" data-color="#C77DFF" style="background:#C77DFF" aria-label="Cor roxa"></button>
-          <button type="button" class="color-btn" data-color="#FF9A3C" style="background:#FF9A3C" aria-label="Cor laranja"></button>
-          <button type="button" class="color-btn" data-color="#00C9A7" style="background:#00C9A7" aria-label="Cor verde-água"></button>
-          <button type="button" class="color-btn" data-color="#F72585" style="background:#F72585" aria-label="Cor rosa"></button>
+      <!-- CARD: Sessões e Horas -->
+      <div class="dashboard-card stats-card">
+        <div class="stat-item">
+          <span class="stat-label">Total de Horas</span>
+          <span class="stat-value" id="statHours">0h</span>
         </div>
-      </fieldset>
-
-      <div class="form-group">
-        <label for="inputNotes">Notas (opcional)</label>
-        <textarea id="inputNotes" placeholder="Cap. 3, exercícios 1–10…" rows="3" maxlength="120"></textarea>
+        <div class="stat-item">
+          <span class="stat-label">Matérias</span>
+          <span class="stat-value" id="statSubjects">0</span>
+        </div>
       </div>
 
-      <button type="submit" class="btn-add" id="btnAdd">+ Adicionar</button>
-      </form>
+      <!-- CARD: Matérias -->
+      <div class="dashboard-card">
+        <h3 class="card-title">Matérias</h3>
+        <ul class="subjects-list" id="subjectsList">
+          <li class="empty-list">Nenhuma matéria yet</li>
+        </ul>
+      </div>
 
-      <!-- Legenda de matérias -->
-      <div class="legend-section">
-        <h3 class="legend-title">Matérias</h3>
-        <ul class="legend-list" id="legendList"></ul>
+      <!-- CARD: Resumo por Dia -->
+      <div class="dashboard-card">
+        <h3 class="card-title">Resumo da Semana</h3>
+        <div class="day-summary" id="daySummary">
+          <!-- Gerado via JS -->
+        </div>
+      </div>
+
+      <!-- CARD: Próxima Sessão -->
+      <div class="dashboard-card">
+        <h3 class="card-title">Próxima Sessão</h3>
+        <div class="next-session" id="nextSession">
+          <div class="empty-list">Nenhuma sessão planejada</div>
+        </div>
       </div>
     </aside>
 
-    <!-- GRADE SEMANAL -->
-    <section class="grid-section" aria-label="Grade semanal de estudo">
-      <div class="week-grid" id="weekGrid" role="grid" aria-label="Sessões de estudo por dia da semana">
-        <!-- colunas dos dias geradas via JS -->
+    <!-- COLUNA DIREITA: AGENDA SEMANAL EM GRADE -->
+    <section class="agenda-section">
+      <div class="time-grid-wrapper">
+        <!-- Header com dias da semana -->
+        <div class="time-grid-header">
+          <div class="time-labels-col"></div>
+          <div class="days-header" id="daysHeader">
+            <!-- Gerado via JS -->
+          </div>
+        </div>
+        
+        <!-- Grid com horários e sessões -->
+        <div class="time-grid-container">
+          <div class="time-labels" id="timeLabels">
+            <!-- Gerado via JS -->
+          </div>
+          <div class="time-grid" id="timeGrid">
+            <!-- Gerado via JS -->
+          </div>
+        </div>
       </div>
     </section>
 
   </main>
 
-  <!-- MODAL DE EDIÇÃO -->
-  <div class="modal-overlay" id="modalOverlay" role="dialog" aria-labelledby="modalTitle" hidden>
+  <!-- MODAL: NOVA SESSÃO / EDITAR -->
+  <div class="modal-overlay" id="modalOverlay" role="dialog" aria-labelledby="modalTitle">
     <div class="modal">
-      <h3 class="modal-title" id="modalTitle">Editar Sessão</h3>
-      <form id="editForm">
-      <div class="form-group">
-        <label for="editSubject">Matéria / Tema</label>
-        <input type="text" id="editSubject" maxlength="40" />
-      </div>
-      <div class="form-row">
-        <div class="form-group half">
-          <label for="editStart">Início</label>
-          <input type="time" id="editStart" />
+      <h3 class="modal-title" id="modalTitle">Nova Sessão</h3>
+      <form id="sessionForm">
+        
+        <fieldset class="form-group">
+          <legend>Dia da semana</legend>
+          <div class="day-picker" id="dayPicker" role="group">
+            <button type="button" class="day-btn" data-day="0" aria-label="Segunda-feira">SEG</button>
+            <button type="button" class="day-btn" data-day="1" aria-label="Terça-feira">TER</button>
+            <button type="button" class="day-btn" data-day="2" aria-label="Quarta-feira">QUA</button>
+            <button type="button" class="day-btn" data-day="3" aria-label="Quinta-feira">QUI</button>
+            <button type="button" class="day-btn" data-day="4" aria-label="Sexta-feira">SEX</button>
+            <button type="button" class="day-btn" data-day="5" aria-label="Sábado">SÁB</button>
+            <button type="button" class="day-btn" data-day="6" aria-label="Domingo">DOM</button>
+          </div>
+        </fieldset>
+
+        <div class="form-group">
+          <label for="inputSubject">Matéria / Tema</label>
+          <input type="text" id="inputSubject" placeholder="ex: Cálculo, Inglês…" maxlength="40" required />
         </div>
-        <div class="form-group half">
-          <label for="editEnd">Fim</label>
-          <input type="time" id="editEnd" />
+
+        <div class="form-row">
+          <div class="form-group half">
+            <label for="inputStart">Início</label>
+            <input type="time" id="inputStart" value="08:00" required />
+          </div>
+          <div class="form-group half">
+            <label for="inputEnd">Fim</label>
+            <input type="time" id="inputEnd" value="09:00" required />
+          </div>
         </div>
-      </div>
-      <div class="form-group">
-        <label for="editNotes">Notas</label>
-        <textarea id="editNotes" rows="3" maxlength="120"></textarea>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn-delete" id="btnDelete">Excluir</button>
-        <button type="button" class="btn-cancel" id="btnCancel">Cancelar</button>
-        <button type="submit" class="btn-save" id="btnSave">Salvar</button>
-      </div>
+
+        <fieldset class="form-group">
+          <legend>Cor da matéria</legend>
+          <div class="color-picker" id="colorPicker" role="group">
+            <button type="button" class="color-btn selected" data-color="#FF6B6B" style="background:#FF6B6B" aria-label="Cor vermelha"></button>
+            <button type="button" class="color-btn" data-color="#FFD93D" style="background:#FFD93D" aria-label="Cor amarela"></button>
+            <button type="button" class="color-btn" data-color="#6BCB77" style="background:#6BCB77" aria-label="Cor verde"></button>
+            <button type="button" class="color-btn" data-color="#4D96FF" style="background:#4D96FF" aria-label="Cor azul"></button>
+            <button type="button" class="color-btn" data-color="#C77DFF" style="background:#C77DFF" aria-label="Cor roxa"></button>
+            <button type="button" class="color-btn" data-color="#FF9A3C" style="background:#FF9A3C" aria-label="Cor laranja"></button>
+            <button type="button" class="color-btn" data-color="#00C9A7" style="background:#00C9A7" aria-label="Cor verde-água"></button>
+            <button type="button" class="color-btn" data-color="#F72585" style="background:#F72585" aria-label="Cor rosa"></button>
+          </div>
+        </fieldset>
+
+        <div class="form-group">
+          <label for="inputNotes">Notas (opcional)</label>
+          <textarea id="inputNotes" placeholder="Cap. 3, exercícios 1–10…" rows="3" maxlength="120"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-delete" id="btnDelete" style="display:none;">Excluir</button>
+          <div class="actions-right">
+            <button type="button" class="btn-cancel" id="btnCancel">Cancelar</button>
+            <button type="submit" class="btn-save" id="btnSave">Salvar</button>
+          </div>
+        </div>
       </form>
     </div>
   </div>
 
-  <!-- TOAST -->
+  <!-- TOAST NOTIFICATIONS -->
   <div class="toast" id="toast" role="alert" aria-live="polite" aria-atomic="true"></div>
 
   <script src="app.js"></script>
 </body>
 </html>
+
+
