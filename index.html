@@ -32,7 +32,15 @@
     </div>
     <div class="header-right">
       <button class="btn-primary" id="btnNewSession">+ Nova Sessão</button>
-      <button class="btn-export" id="btnExport" aria-label="Exportar ou imprimir">⤓</button>
+      <div class="export-menu-wrapper">
+        <button class="btn-export" id="btnExport" aria-label="Exportar ou imprimir" aria-haspopup="menu">⤓</button>
+        <!-- [MELHORIA 12] Menu de exportação com PDF, PNG, iCal -->
+        <div class="export-menu" id="exportMenu" role="menu">
+          <button class="export-option" data-export="pdf" role="menuitem">📄 Exportar PDF</button>
+          <button class="export-option" data-export="png" role="menuitem">🖼️ Salvar como PNG</button>
+          <button class="export-option" data-export="ical" role="menuitem">📅 Adicionar ao Google Calendar</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -76,7 +84,7 @@
       <div class="dashboard-card">
         <h3 class="card-title">Matérias</h3>
         <ul class="subjects-list" id="subjectsList">
-          <li class="empty-list">Nenhuma matéria yet</li>
+          <!-- [MELHORIA 1] Gerado dinamicamente com empty state -->
         </ul>
       </div>
 
@@ -122,11 +130,14 @@
 
   </main>
 
-  <!-- MODAL: NOVA SESSÃO / EDITAR -->
-  <div class="modal-overlay" id="modalOverlay" role="dialog" aria-labelledby="modalTitle">
-    <div class="modal">
-      <h3 class="modal-title" id="modalTitle">Nova Sessão</h3>
-      <form id="sessionForm">
+  <!-- DRAWER: NOVA SESSÃO / EDITAR [MELHORIA 4] Slide-in panel lateral -->
+  <div class="drawer-overlay" id="modalOverlay" role="dialog" aria-labelledby="modalTitle">
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <h3 class="drawer-title" id="modalTitle">Nova Sessão</h3>
+        <button class="btn-close-drawer" id="btnCloseDraw" aria-label="Fechar formulário">✕</button>
+      </div>
+      <form id="sessionForm" class="drawer-content">
         
         <fieldset class="form-group">
           <legend>Dia da semana</legend>
@@ -159,15 +170,20 @@
 
         <fieldset class="form-group">
           <legend>Cor da matéria</legend>
+          <!-- [MELHORIA 3] Grid de 12 cores customizado (substituindo input color nativo) -->
           <div class="color-picker" id="colorPicker" role="group">
-            <button type="button" class="color-btn selected" data-color="#FF6B6B" style="background:#FF6B6B" aria-label="Cor vermelha"></button>
-            <button type="button" class="color-btn" data-color="#FFD93D" style="background:#FFD93D" aria-label="Cor amarela"></button>
-            <button type="button" class="color-btn" data-color="#6BCB77" style="background:#6BCB77" aria-label="Cor verde"></button>
-            <button type="button" class="color-btn" data-color="#4D96FF" style="background:#4D96FF" aria-label="Cor azul"></button>
-            <button type="button" class="color-btn" data-color="#C77DFF" style="background:#C77DFF" aria-label="Cor roxa"></button>
-            <button type="button" class="color-btn" data-color="#FF9A3C" style="background:#FF9A3C" aria-label="Cor laranja"></button>
-            <button type="button" class="color-btn" data-color="#00C9A7" style="background:#00C9A7" aria-label="Cor verde-água"></button>
-            <button type="button" class="color-btn" data-color="#F72585" style="background:#F72585" aria-label="Cor rosa"></button>
+            <button type="button" class="color-btn selected" data-color="#EF4444" style="background:#EF4444" aria-label="Vermelho"></button>
+            <button type="button" class="color-btn" data-color="#F97316" style="background:#F97316" aria-label="Laranja"></button>
+            <button type="button" class="color-btn" data-color="#EAB308" style="background:#EAB308" aria-label="Amarelo"></button>
+            <button type="button" class="color-btn" data-color="#22C55E" style="background:#22C55E" aria-label="Verde"></button>
+            <button type="button" class="color-btn" data-color="#14B8A6" style="background:#14B8A6" aria-label="Verde-água"></button>
+            <button type="button" class="color-btn" data-color="#3B82F6" style="background:#3B82F6" aria-label="Azul"></button>
+            <button type="button" class="color-btn" data-color="#8B5CF6" style="background:#8B5CF6" aria-label="Púrpura"></button>
+            <button type="button" class="color-btn" data-color="#EC4899" style="background:#EC4899" aria-label="Rosa"></button>
+            <button type="button" class="color-btn" data-color="#64748B" style="background:#64748B" aria-label="Cinza-azul"></button>
+            <button type="button" class="color-btn" data-color="#0EA5E9" style="background:#0EA5E9" aria-label="Ciano"></button>
+            <button type="button" class="color-btn" data-color="#F43F5E" style="background:#F43F5E" aria-label="Magenta"></button>
+            <button type="button" class="color-btn" data-color="#A3E635" style="background:#A3E635" aria-label="Lima"></button>
           </div>
         </fieldset>
 
@@ -176,7 +192,7 @@
           <textarea id="inputNotes" placeholder="Cap. 3, exercícios 1–10…" rows="3" maxlength="120"></textarea>
         </div>
 
-        <div class="modal-actions">
+        <div class="drawer-actions">
           <button type="button" class="btn-delete" id="btnDelete" style="display:none;">Excluir</button>
           <div class="actions-right">
             <button type="button" class="btn-cancel" id="btnCancel">Cancelar</button>
@@ -189,6 +205,10 @@
 
   <!-- TOAST NOTIFICATIONS -->
   <div class="toast" id="toast" role="alert" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- [MELHORIA 12] Scripts para exportação (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script src="app.js"></script>
 </body>

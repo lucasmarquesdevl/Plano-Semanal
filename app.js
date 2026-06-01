@@ -1,21 +1,32 @@
 /* =========================================
-   STUDYWEEK — REDESIGN COMPLETO
+   STUDYWEEK — REFATORAÇÃO COMPLETA v2.0
+   [MELHORIA 1-13] Melhorias de UX/UI implementadas
    Dashboard + Agenda com Grade de Horários
    ========================================= */
 
 const DAYS_SHORT = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
 const STORAGE_KEY = 'studyweek_sessions';
+const NOTIFICATIONS_ENABLED_KEY = 'studyweek_notifications_enabled'; // [MELHORIA 13]
 const TIME_START = 7;     // início da grade (07:00)
 const TIME_END = 23;      // fim da grade (23:00)
 const SLOT_HEIGHT = 60;   // altura de cada slot de 1 hora em px
+
+// [MELHORIA 3] Paleta de 12 cores para o color picker
+const COLORS_PALETTE = [
+  '#EF4444', '#F97316', '#EAB308', '#22C55E', 
+  '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899',
+  '#64748B', '#0EA5E9', '#F43F5E', '#A3E635'
+];
 
 // ——— STATE ———
 let sessions = [];           // { id, day, subject, start, end, color, notes, done }
 let currentWeekOffset = 0;   // 0 = this week, -1 = previous, +1 = next
 let selectedDay = null;
-let selectedColor = '#FF6B6B';
+let selectedColor = COLORS_PALETTE[0];
 let editingId = null;
 let currentDate = new Date();  // Data base para cálculos de semana
+let toastQueue = [];          // [MELHORIA 5] Fila de toasts para stacking
+let notificationsEnabled = false; // [MELHORIA 13]
 
 // ——— DOM REFS ———
 // Header
@@ -24,6 +35,7 @@ const btnNextWeek = document.getElementById('btnNextWeek');
 const weekRangeEl = document.getElementById('weekRange');
 const btnNewSession = document.getElementById('btnNewSession');
 const btnExport = document.getElementById('btnExport');
+const exportMenu = document.getElementById('exportMenu'); // [MELHORIA 12]
 
 // Dashboard
 const dashboard = document.getElementById('dashboard');
@@ -42,8 +54,8 @@ const daysHeader = document.getElementById('daysHeader');
 const timeLabels = document.getElementById('timeLabels');
 const timeGrid = document.getElementById('timeGrid');
 
-// Modal
-const modalOverlay = document.getElementById('modalOverlay');
+// [MELHORIA 4] Drawer (antigas "modal")
+const drawerOverlay = document.getElementById('modalOverlay');
 const sessionForm = document.getElementById('sessionForm');
 const dayPicker = document.getElementById('dayPicker');
 const inputSubject = document.getElementById('inputSubject');
@@ -54,6 +66,7 @@ const inputNotes = document.getElementById('inputNotes');
 const btnSave = document.getElementById('btnSave');
 const btnDelete = document.getElementById('btnDelete');
 const btnCancel = document.getElementById('btnCancel');
+const btnCloseDraw = document.getElementById('btnCloseDraw'); // [MELHORIA 4]
 
 // Toast
 const toast = document.getElementById('toast');
@@ -61,6 +74,7 @@ const toast = document.getElementById('toast');
 // ——— INIT ———
 function init() {
   loadData();
+  checkNotificationsPermission(); // [MELHORIA 13]
   bindEvents();
   renderAll();
 }
@@ -284,7 +298,15 @@ function renderSubjects(weekSessions) {
   
   subjectsList.innerHTML = '';
   if (Object.keys(map).length === 0) {
-    subjectsList.innerHTML = '<li class="empty-list">Nenhuma matéria</li>';
+    // [MELHORIA 1] Empty state acolhedor
+    subjectsList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📚</div>
+        <div class="empty-state-title">Nenhuma matéria ainda</div>
+        <div class="empty-state-subtitle">Adicione sessões para ver as matérias aqui</div>
+        <button class="empty-state-cta" onclick="document.getElementById('btnNewSession').click()">Adicionar sessão</button>
+      </div>
+    `;
   } else {
     Object.entries(map)
       .sort((a, b) => b[1].count - a[1].count)
@@ -338,7 +360,14 @@ function renderNextSession(weekSessions) {
   
   nextSession.innerHTML = '';
   if (upcomingSessions.length === 0) {
-    nextSession.innerHTML = '<div class="empty-list">Nenhuma sessão planejada</div>';
+    // [MELHORIA 1] Empty state acolhedor
+    nextSession.innerHTML = `
+      <div class="empty-state" style="min-height: 120px;">
+        <div class="empty-state-icon">🎯</div>
+        <div class="empty-state-title">Tudo em dia!</div>
+        <div class="empty-state-subtitle">Nenhuma sessão planejada</div>
+      </div>
+    `;
   } else {
     const s = upcomingSessions[0];
     const dates = getWeekDates();
@@ -353,24 +382,24 @@ function renderNextSession(weekSessions) {
   }
 }
 
-// ——— MODAL OPERATIONS ———
+// ——— DRAWER OPERATIONS [MELHORIA 4] ———
 function openNewSessionModal() {
   editingId = null;
   sessionForm.reset();
   dayPicker.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
   colorPicker.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
   
-  // Selecionar cor padrão
-  selectedColor = '#FF6B6B';
-  colorPicker.querySelector('[data-color="#FF6B6B"]').classList.add('selected');
+  // [MELHORIA 3] Selecionar primeira cor da paleta
+  selectedColor = COLORS_PALETTE[0];
+  colorPicker.querySelector(`[data-color="${COLORS_PALETTE[0]}"]`).classList.add('selected');
   
   // Selecionar horários padrão
   inputStart.value = '08:00';
   inputEnd.value = '09:00';
   
-  document.querySelector('.modal-title').textContent = 'Nova Sessão';
+  document.getElementById('modalTitle').textContent = 'Nova Sessão';
   btnDelete.style.display = 'none';
-  modalOverlay.classList.add('open');
+  drawerOverlay.classList.add('open');
 }
 
 function openEditModal(id) {
@@ -393,13 +422,13 @@ function openEditModal(id) {
   colorPicker.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
   colorPicker.querySelector(`[data-color="${s.color}"]`).classList.add('selected');
   
-  document.querySelector('.modal-title').textContent = 'Editar Sessão';
+  document.getElementById('modalTitle').textContent = 'Editar Sessão';
   btnDelete.style.display = 'inline-block';
-  modalOverlay.classList.add('open');
+  drawerOverlay.classList.add('open');
 }
 
 function closeModal() {
-  modalOverlay.classList.remove('open');
+  drawerOverlay.classList.remove('open');
   editingId = null;
   selectedDay = null;
 }
@@ -426,7 +455,7 @@ function saveSession() {
     showToast('✓ Sessão atualizada');
   } else {
     // Novo
-    sessions.push({
+    const newSession = {
       id: Date.now().toString(),
       day: selectedDay,
       subject,
@@ -435,8 +464,14 @@ function saveSession() {
       color: selectedColor,
       notes: inputNotes.value.trim(),
       done: false,
-    });
+    };
+    sessions.push(newSession);
     showToast(`✓ "${subject}" adicionado`);
+    
+    // [MELHORIA 13] Agendar notificação se habilitado
+    if (notificationsEnabled) {
+      scheduleSessionNotification(newSession);
+    }
   }
   
   saveData();
@@ -478,9 +513,27 @@ function bindEvents() {
   // New session
   btnNewSession.addEventListener('click', openNewSessionModal);
   
-  // Export (placeholder)
-  btnExport.addEventListener('click', () => {
-    showToast('📋 Funcionalidade em desenvolvimento');
+  // [MELHORIA 12] Export menu
+  btnExport.addEventListener('click', (e) => {
+    e.stopPropagation();
+    exportMenu.classList.toggle('open');
+  });
+  
+  document.querySelectorAll('.export-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.export;
+      exportMenu.classList.remove('open');
+      if (type === 'pdf') exportPDF();
+      else if (type === 'png') exportPNG();
+      else if (type === 'ical') exportICalendar();
+    });
+  });
+  
+  // Close export menu on outside click
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.export-menu-wrapper')) {
+      exportMenu.classList.remove('open');
+    }
   });
   
   // Day picker
@@ -492,7 +545,7 @@ function bindEvents() {
     });
   });
   
-  // Color picker
+  // [MELHORIA 3] Color picker com 12 cores
   colorPicker.querySelectorAll('.color-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       colorPicker.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
@@ -501,20 +554,22 @@ function bindEvents() {
     });
   });
   
-  // Modal
+  // [MELHORIA 4] Drawer (antiga modal)
   sessionForm.addEventListener('submit', (e) => {
     e.preventDefault();
     saveSession();
   });
   btnDelete.addEventListener('click', deleteCurrentSession);
   btnCancel.addEventListener('click', closeModal);
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) closeModal();
+  btnCloseDraw.addEventListener('click', closeModal);
+  drawerOverlay.addEventListener('click', (e) => {
+    if (e.target === drawerOverlay) closeModal();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && modalOverlay.classList.contains('open')) closeModal();
+    if (e.key === 'Escape' && drawerOverlay.classList.contains('open')) closeModal();
   });
 }
+
 
 // ——— HELPERS ———
 function hexToRgba(hex, alpha) {
@@ -542,12 +597,185 @@ function escHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-let toastTimer;
+// ——— NOTIFICATIONS [MELHORIA 13] ———
+function checkNotificationsPermission() {
+  if (!('Notification' in window)) {
+    console.log('Browser não suporta Notifications API');
+    return;
+  }
+  
+  if (Notification.permission === 'granted') {
+    notificationsEnabled = true;
+    localStorage.setItem(NOTIFICATIONS_ENABLED_KEY, 'true');
+  } else if (Notification.permission === 'denied') {
+    notificationsEnabled = false;
+    localStorage.setItem(NOTIFICATIONS_ENABLED_KEY, 'false');
+  } else {
+    notificationsEnabled = localStorage.getItem(NOTIFICATIONS_ENABLED_KEY) === 'true';
+  }
+}
+
+function requestNotificationPermission() {
+  if (!('Notification' in window)) {
+    showToast('Seu navegador não suporta notificações');
+    return;
+  }
+  
+  if (Notification.permission === 'granted') {
+    notificationsEnabled = true;
+    localStorage.setItem(NOTIFICATIONS_ENABLED_KEY, 'true');
+    showToast('✓ Notificações ativadas');
+  } else if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then(permission => {
+      notificationsEnabled = permission === 'granted';
+      localStorage.setItem(NOTIFICATIONS_ENABLED_KEY, notificationsEnabled ? 'true' : 'false');
+      if (notificationsEnabled) {
+        showToast('✓ Notificações ativadas');
+      } else {
+        showToast('Notificações bloqueadas');
+      }
+    });
+  }
+}
+
+function scheduleSessionNotification(session) {
+  // Agendar notificação 10 minutos antes da sessão
+  const now = new Date();
+  const dates = getWeekDates();
+  const sessionDate = new Date(dates[session.day]);
+  const [h, m] = session.start.split(':').map(Number);
+  sessionDate.setHours(h, m, 0, 0);
+  
+  const notificationTime = new Date(sessionDate.getTime() - 10 * 60000);
+  const delayMs = notificationTime.getTime() - now.getTime();
+  
+  if (delayMs > 0) {
+    setTimeout(() => {
+      if (notificationsEnabled && 'Notification' in window) {
+        new Notification(`${session.subject} em 10 minutos!`, {
+          body: `${session.start} – ${session.end}`,
+          badge: '📚',
+          icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">📚</text></svg>',
+        });
+      }
+    }, delayMs);
+  }
+}
+
+// ——— EXPORTS [MELHORIA 12] ———
+function exportPDF() {
+  const weekStart = getWeekDates()[0];
+  const weekEnd = getWeekDates()[6];
+  const filename = `StudyWeek_${formatDate(weekStart)}_${formatDate(weekEnd)}.pdf`;
+  
+  const element = timeGrid;
+  const opt = {
+    margin: 10,
+    filename: filename,
+    image: { type: 'png', quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' },
+  };
+  
+  try {
+    html2pdf().set(opt).from(element).save();
+    showToast('✓ PDF exportado');
+  } catch (err) {
+    showToast('❌ Erro ao exportar PDF');
+    console.error(err);
+  }
+}
+
+function exportPNG() {
+  const weekStart = getWeekDates()[0];
+  const weekEnd = getWeekDates()[6];
+  const filename = `StudyWeek_${formatDate(weekStart)}_${formatDate(weekEnd)}.png`;
+  
+  html2canvas(timeGrid, { scale: 2, backgroundColor: '#0d0d0f' })
+    .then(canvas => {
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL();
+      link.download = filename;
+      link.click();
+      showToast('✓ PNG exportado');
+    })
+    .catch(err => {
+      showToast('❌ Erro ao exportar PNG');
+      console.error(err);
+    });
+}
+
+function exportICalendar() {
+  const weekSessions = getSessionsForWeek();
+  if (weekSessions.length === 0) {
+    showToast('Nenhuma sessão para exportar');
+    return;
+  }
+  
+  // Gerar iCalendar format
+  const dates = getWeekDates();
+  let ical = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//StudyWeek//EN
+CALSCALE:GREGORIAN
+X-WR-CALNAME:Plano Semanal
+X-WR-TIMEZONE:America/Sao_Paulo
+`;
+  
+  weekSessions.forEach(s => {
+    const sessionDate = new Date(dates[s.day]);
+    const [startH, startM] = s.start.split(':').map(Number);
+    const [endH, endM] = s.end.split(':').map(Number);
+    
+    sessionDate.setHours(startH, startM, 0, 0);
+    const endDate = new Date(dates[s.day]);
+    endDate.setHours(endH, endM, 0, 0);
+    
+    const dtstart = sessionDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const dtend = endDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    
+    ical += `BEGIN:VEVENT
+UID:${s.id}@studyweek
+DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+DTSTART:${dtstart}
+DTEND:${dtend}
+SUMMARY:${s.subject}
+DESCRIPTION:${s.notes}
+END:VEVENT
+`;
+  });
+  
+  ical += 'END:VCALENDAR';
+  
+  // Download .ics
+  const blob = new Blob([ical], { type: 'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `StudyWeek_${formatDate(dates[0])}.ics`;
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ iCalendar exportado');
+}
+
+function formatDate(date) {
+  return `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+}
+
+// ——— TOAST [MELHORIA 5] ———
 function showToast(msg) {
-  toast.textContent = msg;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  
+  // Trigger animation
+  requestAnimationFrame(() => t.classList.add('show'));
+  
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 300);
+  }, 2500);
 }
 
 // ——— START ———
