@@ -27,6 +27,7 @@ let editingId = null;
 let currentDate = new Date();  // Data base para cálculos de semana
 let toastQueue = [];          // [MELHORIA 5] Fila de toasts para stacking
 let notificationsEnabled = false; // [MELHORIA 13]
+let currentTheme = 'dark';
 
 // ——— DOM REFS ———
 // Header
@@ -34,6 +35,7 @@ const btnPrevWeek = document.getElementById('btnPrevWeek');
 const btnNextWeek = document.getElementById('btnNextWeek');
 const weekRangeEl = document.getElementById('weekRange');
 const btnNewSession = document.getElementById('btnNewSession');
+const btnThemeToggle = document.getElementById('btnThemeToggle');
 const btnExport = document.getElementById('btnExport');
 const exportMenu = document.getElementById('exportMenu'); // [MELHORIA 12]
 
@@ -74,6 +76,7 @@ const toast = document.getElementById('toast');
 // ——— INIT ———
 function init() {
   loadData();
+  applyTheme(loadTheme());
   checkNotificationsPermission(); // [MELHORIA 13]
   bindEvents();
   renderAll();
@@ -88,6 +91,26 @@ function loadData() {
 
 function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+}
+
+function loadTheme() {
+  const saved = localStorage.getItem('studyweek_theme');
+  if (saved === 'dark' || saved === 'light') return saved;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.body.setAttribute('data-theme', theme);
+  document.documentElement.setAttribute('data-theme', theme);
+  if (btnThemeToggle) {
+    btnThemeToggle.innerHTML = theme === 'dark' ? '☀️' : '🌙';
+    btnThemeToggle.setAttribute('aria-label', theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro');
+    btnThemeToggle.title = theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro';
+  }
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) metaTheme.setAttribute('content', theme === 'dark' ? '#111723' : '#f4f7fb');
+  localStorage.setItem('studyweek_theme', theme);
 }
 
 // ——— WEEK CALCULATIONS ———
@@ -512,6 +535,13 @@ function bindEvents() {
   
   // New session
   btnNewSession.addEventListener('click', openNewSessionModal);
+  if (btnThemeToggle) {
+    btnThemeToggle.addEventListener('click', () => {
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      applyTheme(nextTheme);
+      showToast(nextTheme === 'dark' ? '🌙 Modo escuro ativado' : '🌤 Modo claro ativado');
+    });
+  }
   
   // [MELHORIA 12] Export menu
   btnExport.addEventListener('click', (e) => {
@@ -525,6 +555,7 @@ function bindEvents() {
       exportMenu.classList.remove('open');
       if (type === 'pdf') exportPDF();
       else if (type === 'png') exportPNG();
+      else if (type === 'text') exportTextPlan();
       else if (type === 'ical') exportICalendar();
     });
   });
@@ -703,6 +734,38 @@ function exportPNG() {
       showToast('❌ Erro ao exportar PNG');
       console.error(err);
     });
+}
+
+function exportTextPlan() {
+  const weekSessions = getSessionsForWeek().sort((a, b) => {
+    if (a.day !== b.day) return a.day - b.day;
+    return a.start.localeCompare(b.start);
+  });
+
+  if (weekSessions.length === 0) {
+    showToast('Nenhuma sessão para exportar');
+    return;
+  }
+
+  const dates = getWeekDates();
+  const lines = [
+    'Plano Semanal — StudyWeek',
+    `Período: ${formatDate(dates[0])} a ${formatDate(dates[6])}`,
+    '',
+    ...weekSessions.map(s => {
+      const date = dates[s.day];
+      return `${DAYS_SHORT[s.day]} ${date.getDate()}/${date.getMonth() + 1} — ${s.start} às ${s.end} | ${s.subject}${s.notes ? ` | ${s.notes}` : ''}`;
+    }),
+  ];
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `StudyWeek_${formatDate(dates[0])}_${formatDate(dates[6])}.txt`;
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Plano semanal exportado');
 }
 
 function exportICalendar() {

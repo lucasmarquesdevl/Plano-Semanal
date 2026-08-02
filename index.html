@@ -31,13 +31,14 @@
       </div>
     </div>
     <div class="header-right">
+      <button class="btn-icon" id="btnThemeToggle" aria-label="Alternar tema" title="Alternar tema">☀️</button>
       <button class="btn-primary" id="btnNewSession">+ Nova Sessão</button>
       <div class="export-menu-wrapper">
-        <button class="btn-export" id="btnExport" aria-label="Exportar ou imprimir" aria-haspopup="menu">⤓</button>
-        <!-- [MELHORIA 12] Menu de exportação com PDF, PNG, iCal -->
+        <button class="btn-export" id="btnExport" aria-label="Exportar ou imprimir" aria-haspopup="menu">Exportar</button>
         <div class="export-menu" id="exportMenu" role="menu">
           <button class="export-option" data-export="pdf" role="menuitem">📄 Exportar PDF</button>
           <button class="export-option" data-export="png" role="menuitem">🖼️ Salvar como PNG</button>
+          <button class="export-option" data-export="text" role="menuitem">📝 Exportar plano semanal (.txt)</button>
           <button class="export-option" data-export="ical" role="menuitem">📅 Adicionar ao Google Calendar</button>
         </div>
       </div>
